@@ -1,0 +1,23 @@
+# .platform.app.yaml (front)
+name: front
+type: php:8.3 # on n'utilise pas PHP, mais c'est pratique pour servir du statique
+web:
+  locations:
+    "/":
+      root: ""
+      index:
+        - index.html
+      scripts: false # aucun PHP
+      allow: true
+      expires: 1h
+
+disk: 128
+build:
+  flavor: none
+hooks:
+  build: |
+    set -e
+    # (optionnel) si tu veux recompiler Sass côté build :
+    if [ -f package.json ]; then
+      npm ci --omit=dev || true
+    fi

@@ -4,96 +4,103 @@
   </div>
 </div>
 
-<div class="container">
-  <form>
-    <div class="mb-3">
-      <label for="NomInput" class="form-label">Nom</label>
-      <input
-        disabled
-        type="text"
-        class="form-control"
-        id="NomInput"
-        placeholder="Votre nom"
-        value="John"
-        name="Nom"
-      />
-    </div>
-    <div class="mb-3">
-      <label for="PrenomInput" class="form-label">Prénom</label>
-      <input
-        disabled
-        type="text"
-        class="form-control"
-        id="PrenomInput"
-        placeholder="Votre prénom"
-        value="Doe"
-        name="Prenom"
-      />
-    </div>
-    <div class="mb-3">
-      <label for="AllergieInput" class="form-label">Allergies</label>
-      <input
-        type="text"
-        class="form-control"
-        id="AllergieInput"
-        placeholder="Vos allergies (fruits de mer, arachides..)"
-        value="Cacahouetes"
-        name="Allergies"
-      />
-    </div>
-    <div class="mb-3">
-      <label for="NbConvivesInput" class="form-label"
-        >Nombres de convives habituel</label
-      >
-      <input
-        type="number"
-        class="form-control"
-        id="NbConvivesInput"
-        placeholder="Combien vous êtes habituellement ?"
-        value="4"
-        name="NbConvives"
-      />
-    </div>
-    <div class="mb-3">
-      <label for="DateInput" class="form-label">Date</label>
-      <input type="date" class="form-control" id="DateInput" name="Date" />
-    </div>
-    <div class="mb-3">
-      <div class="form-check">
+<div class="container my-4">
+  <form id="bookingForm" class="mx-auto" style="max-width: 640px">
+    <div class="row g-3">
+      <!-- Infos perso (facultatif côté back, utile pour contact) -->
+      <div class="col-md-6">
+        <label class="form-label" for="NomInput">Nom</label>
         <input
-          class="form-check-input"
-          type="radio"
-          name="serviceChoisi"
-          id="midiRadio"
+          type="text"
+          class="form-control"
+          id="NomInput"
+          name="name"
+          placeholder="Votre nom"
         />
-        <label class="form-check-label" for="midiRadio"> Midi </label>
       </div>
-      <div class="form-check">
+      <div class="col-md-6">
+        <label class="form-label" for="PrenomInput">Prénom</label>
         <input
-          class="form-check-input"
-          type="radio"
-          name="serviceChoisi"
-          id="soirRadio"
-          checked
+          type="text"
+          class="form-control"
+          id="PrenomInput"
+          name="firstname"
+          placeholder="Votre prénom"
         />
-        <label class="form-check-label" for="soirRadio"> Soir </label>
       </div>
-    </div>
-    <div class="mb-3">
-      <label for="selectHour" class="form-label">Heure</label>
-      <select class="form-select" id="selectHour" name="Heure">
-        <option>19:30</option>
-        <option>19:45</option>
-        <option>20:00</option>
-        <option>20:15</option>
-        <option>20:30</option>
-        <option>20:45</option>
-        <option>21:00</option>
-      </select>
-    </div>
-    <div class="text-center">
-      <button type="submit" class="btn btn-primary">Réserver</button>
-      <button type="button" class="btn btn-danger">Annuler</button>
+
+      <div class="col-md-12">
+        <label class="form-label" for="AllergieInput">Allergies</label>
+        <input
+          type="text"
+          class="form-control"
+          id="AllergieInput"
+          name="allergy"
+          placeholder="Fruits de mer, arachides..."
+        />
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label" for="NbConvivesInput"
+          >Nombre de convives</label
+        >
+        <input
+          type="number"
+          min="1"
+          max="20"
+          class="form-control"
+          id="NbConvivesInput"
+          name="guestNumber"
+          value="2"
+          required
+        />
+      </div>
+
+      <div class="col-md-6">
+        <label for="RestaurantSelect" class="form-label">Restaurant</label>
+        <select
+          class="form-select"
+          id="RestaurantSelect"
+          name="restaurantId"
+          required
+        >
+          <option value="" selected disabled>— Sélectionner —</option>
+        </select>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label" for="DateInput">Date</label>
+        <input
+          type="date"
+          class="form-control"
+          id="DateInput"
+          name="orderDate"
+          required
+        />
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label" for="selectHour">Heure</label>
+        <select class="form-select" id="selectHour" name="orderHour" required>
+          <option value="12:00:00">12:00</option>
+          <option value="12:30:00">12:30</option>
+          <option value="19:30:00" selected>19:30</option>
+          <option value="19:45:00">19:45</option>
+          <option value="20:00:00">20:00</option>
+          <option value="20:15:00">20:15</option>
+          <option value="20:30:00">20:30</option>
+          <option value="21:00:00">21:00</option>
+        </select>
+      </div>
+
+      <div class="col-12 text-center pt-2">
+        <button type="submit" class="btn btn-primary">Réserver</button>
+        <button type="button" class="btn btn-secondary" id="CancelBtn">
+          Annuler
+        </button>
+      </div>
     </div>
   </form>
+
+  <div id="bookingFeedback" class="mt-4" style="display: none"></div>
 </div>

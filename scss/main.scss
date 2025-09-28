@@ -105,3 +105,53 @@ p {
     padding: 10px;
   }
 }
+
+[data-show="connected"],
+[data-show="disconnected"],
+[data-show="admin"],
+[data-show="user"] {
+  display: none;
+}
+
+/* --- Carte (liste simple) --- */
+.menu-section-title {
+  font-family: "Montserrat", system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.6rem, 2vw, 2rem);
+  color: #a64e2d; /* ton orange/brun */
+  margin: 1.5rem 0 0.75rem;
+  letter-spacing: 0.5px;
+}
+.menu-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.menu-item {
+  padding: 0.8rem 0;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+}
+.menu-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+.menu-title {
+  font-weight: 600;
+  margin: 0;
+  font-size: 1.05rem;
+}
+.menu-price {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.menu-desc {
+  margin: 0.25rem 0 0;
+  color: #6c757d;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+.menu-actions {
+  margin-top: 0.5rem;
+}

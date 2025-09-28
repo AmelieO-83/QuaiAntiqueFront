@@ -1,0 +1,112 @@
+<div class="hero-scene text-center text-white">
+  <div class="hero-scene-content">
+    <h1>La carte</h1>
+  </div>
+</div>
+
+<div class="container my-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <ul class="nav nav-pills gap-2" id="CarteTabs">
+      <li class="nav-item">
+        <button class="btn btn-outline-primary active" data-cat="entrees">
+          Entrées
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="btn btn-outline-primary" data-cat="plats">Plats</button>
+      </li>
+      <li class="nav-item">
+        <button class="btn btn-outline-primary" data-cat="desserts">
+          Desserts
+        </button>
+      </li>
+    </ul>
+
+    <!-- visible admin -->
+    <button
+      class="btn btn-primary"
+      id="AddFoodBtn"
+      data-show="admin"
+      data-bs-toggle="modal"
+      data-bs-target="#FoodModal"
+      style="display: none"
+    >
+      Ajouter un plat
+    </button>
+  </div>
+
+  <div id="CarteContent"></div>
+</div>
+
+<!-- Modal ajout/édition plat -->
+<div class="modal fade" id="FoodModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" id="foodForm">
+      <div class="modal-header">
+        <h2 class="modal-title fs-5" id="FoodModalTitle">Nouveau plat</h2>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="FoodId" />
+        <div class="mb-3">
+          <label class="form-label" for="FoodName">Nom du plat</label>
+          <input type="text" class="form-control" id="FoodName" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="FoodDesc">Description</label>
+          <textarea class="form-control" id="FoodDesc" rows="3"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="FoodPrice">Prix (€)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            class="form-control"
+            id="FoodPrice"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="FoodCategory">Catégorie</label>
+          <select class="form-select" id="FoodCategory" required>
+            <!-- rempli par JS : 1/2/3 -->
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal suppression -->
+<div class="modal fade" id="DeleteFoodModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" id="deleteFoodForm">
+      <div class="modal-header">
+        <h2 class="modal-title fs-5">Supprimer ce plat ?</h2>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="DeleteFoodId" />
+        <p id="DeleteFoodTitle" class="fw-semibold"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" type="submit">Supprimer</button>
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">
+          Annuler
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

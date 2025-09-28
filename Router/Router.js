@@ -1,83 +1,121 @@
-import Route from "./Route.js";
-import { allRoutes, websiteName } from "./allRoutes.js";
+// Router/Router.js
+import { getToken } from "/src/api.js";
 
-// Création d'une route pour la page 404 (page introuvable)
-const route404 = new Route("404", "Page introuvable", "/pages/404.html", []);
+// Routes -> fichiers HTML
+const routes = {
+  "/": "/pages/home.html",
+  "/galerie": "/pages/galerie.html",
+  "/carte": "/pages/carte.html",
+  "/allResa": "/pages/reservations/allResa.html",
+  "/reserver": "/pages/reservations/reserver.html",
+  "/account": "/pages/auth/account.html",
+  "/signin": "/pages/auth/signin.html",
+  "/signup": "/pages/auth/signup.html",
+};
 
-// Fonction pour récupérer la route correspondant à une URL donnée
-const getRouteByUrl = (url) => {
-  let currentRoute = null;
-  // Parcours de toutes les routes pour trouver la correspondance
-  allRoutes.forEach((element) => {
-    if (element.url == url) {
-      currentRoute = element;
-    }
+// Chemins qui nécessitent d’être connecté
+const protectedPaths = new Set(["/account", "/allResa", "/reserver"]);
+
+function requireAuth(pathname) {
+  if (protectedPaths.has(pathname) && !getToken()) {
+    history.replaceState({}, "", "/signin");
+    loadPage("/signin");
+    return false;
+  }
+  return true;
+}
+
+function highlightActive(pathname) {
+  document.querySelectorAll("header a.nav-link").forEach((link) => {
+    const active = link.getAttribute("href") === pathname;
+    link.classList.toggle("active", active);
   });
-  // Si aucune correspondance n'est trouvée, on retourne la route 404
-  if (currentRoute != null) {
-    return currentRoute;
-  } else {
-    return route404;
-  }
-};
+}
 
-// Fonction pour charger le contenu de la page
-const LoadContentPage = async () => {
-  const path = window.location.pathname;
-  // Récupération de l'URL actuelle
-  const actualRoute = getRouteByUrl(path);
+function isInternalLink(a) {
+  return (
+    a.origin === window.location.origin &&
+    !a.target &&
+    !a.hasAttribute("download")
+  );
+}
 
-  //Vérifier les droits d'accès à la page
-  const allRolesArray = actualRoute.authorize;
-  if (allRolesArray.length > 0) {
-    if (allRolesArray.includes("disconnected")) {
-      if (isConnected()) {
-        window.location.replace("/");
-      }
-    } else {
-      const roleUser = getRole();
-      if (!allRolesArray.includes(roleUser)) {
-        window.location.replace("/");
-      }
+async function initPage(pathname) {
+  try {
+    switch (pathname) {
+      case "/galerie":
+        await import("/js/galerie.js");
+        break;
+      case "/reserver":
+        await import("/js/reservation.js");
+        break;
+      case "/signin":
+        await import("/js/auth/signin.js");
+        break;
+      case "/signup":
+        await import("/js/auth/signup.js");
+        break;
+      case "/account":
+        await import("/js/auth/account.js");
+        break;
+      case "/carte":
+        await import("/js/carte.js");
+        break;
+      default:
+        // rien
+        break;
     }
+  } catch (e) {
+    console.error("Init page error:", e);
   }
+}
 
-  // Récupération du contenu HTML de la route
-  const html = await fetch(actualRoute.pathHtml).then((data) => data.text());
-  // Ajout du contenu HTML à l'élément avec l'ID "main-page"
-  document.getElementById("main-page").innerHTML = html;
+export async function loadPage(pathname) {
+  const path = routes[pathname] || "/pages/404.html";
 
-  // Ajout du contenu JavaScript
-  if (actualRoute.pathJS != "") {
-    // Création d'une balise script
-    var scriptTag = document.createElement("script");
-    scriptTag.setAttribute("type", "text/javascript");
-    scriptTag.setAttribute("src", actualRoute.pathJS);
+  // Auth guard
+  if (!requireAuth(pathname)) return;
 
-    // Ajout de la balise script au corps du document
-    document.querySelector("body").appendChild(scriptTag);
+  try {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
+    const html = await res.text();
+
+    document.getElementById("main-page").innerHTML = html;
+    highlightActive(pathname);
+
+    // Initialiser le JS de la page injectée
+    await initPage(pathname);
+
+    // Signaler que la page est prête : script.js écoutera cet évènement
+    window.dispatchEvent(new Event("spa:navigated"));
+  } catch (e) {
+    console.error(e);
+    document.getElementById(
+      "main-page"
+    ).innerHTML = `<div class="container py-5"><div class="alert alert-danger">Erreur de chargement de la page.</div></div>`;
   }
+}
 
-  // Changement du titre de la page
-  document.title = actualRoute.title + " - " + websiteName;
+function onLinkClick(e) {
+  const a = e.target.closest("a[href]");
+  if (!a || !isInternalLink(a)) return;
 
-  //Afficher et masquer les éléments en fonction du rôle
-  showAndHideElementsForRoles();
-};
+  const url = new URL(a.href);
+  if (url.pathname === window.location.pathname) {
+    e.preventDefault();
+    return;
+  }
+  e.preventDefault();
+  window.history.pushState({}, "", url.pathname);
+  loadPage(url.pathname);
+}
 
-// Fonction pour gérer les événements de routage (clic sur les liens)
-const routeEvent = (event) => {
-  event = event || window.event;
-  event.preventDefault();
-  // Mise à jour de l'URL dans l'historique du navigateur
-  window.history.pushState({}, "", event.target.href);
-  // Chargement du contenu de la nouvelle page
-  LoadContentPage();
-};
+function onPopState() {
+  loadPage(window.location.pathname);
+}
 
-// Gestion de l'événement de retour en arrière dans l'historique du navigateur
-window.onpopstate = LoadContentPage;
-// Assignation de la fonction routeEvent à la propriété route de la fenêtre
-window.route = routeEvent;
-// Chargement du contenu de la page au chargement initial
-LoadContentPage();
+// init SPA
+window.addEventListener("popstate", onPopState);
+document.addEventListener("click", onLinkClick);
+loadPage(window.location.pathname);

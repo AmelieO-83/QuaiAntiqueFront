@@ -38,12 +38,12 @@
                 <a class="nav-link" href="/galerie">Galerie</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="#">La carte</a>
+                <a class="nav-link" href="/carte">La carte</a>
               </li>
-              <li class="nav-item">
-                <a class="nav-link" href="/allResa">Les réservations</a>
+              <li class="nav-item" data-show="user">
+                <a class="nav-link" href="/allResa">Mes réservations</a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item" data-show="user">
                 <a class="nav-link" href="/account">Mon compte</a>
               </li>
               <li class="nav-item" data-show="disconnected">
@@ -81,7 +81,8 @@
         </div>
       </div>
     </footer>
-    <script src="js/script.js"></script>
+    <script type="module" src="js/script.js"></script>
+    <script type="module" src="/js/header-auth.js"></script>
     <script type="module" src="Router/Router.js"></script>
     <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
   </body>

@@ -1,88 +1,67 @@
-const tokenCookieName = "accesstoken";
-const RoleCookieName = "role";
-const signoutBtn = document.getElementById("signout-btn");
+// js/script.js
+// Gère l’affichage conditionnel de la navbar et quelques actions globales.
 
-signoutBtn.addEventListener("click", signout);
+import { getToken, isAdmin, logout } from "/src/api.js";
 
-function getRole() {
-  return getCookie(RoleCookieName);
-}
-
-function signout() {
-  eraseCookie(tokenCookieName);
-  eraseCookie(RoleCookieName);
-  window.location.reload();
-}
-
-function setToken(token) {
-  setCookie(tokenCookieName, token, 7);
-}
-
-function getToken() {
-  return getCookie(tokenCookieName);
-}
-
-function setCookie(name, value, days) {
-  var expires = "";
-  if (days) {
-    var date = new Date();
-    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
-    expires = "; expires=" + date.toUTCString();
-  }
-  document.cookie = name + "=" + (value || "") + expires + "; path=/";
-}
-
-function getCookie(name) {
-  var nameEQ = name + "=";
-  var ca = document.cookie.split(";");
-  for (var i = 0; i < ca.length; i++) {
-    var c = ca[i];
-    while (c.charAt(0) == " ") c = c.substring(1, c.length);
-    if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
-  }
-  return null;
-}
-
-function eraseCookie(name) {
-  document.cookie = name + "=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-}
-
-function isConnected() {
-  if (getToken() == null || getToken == undefined) {
-    return false;
-  } else {
-    return true;
-  }
-}
-
-function showAndHideElementsForRoles() {
-  const userConnected = isConnected();
-  const role = getRole();
-
-  let allElementsToEdit = document.querySelectorAll("[data-show]");
-
-  allElementsToEdit.forEach((element) => {
-    switch (element.dataset.show) {
-      case "disconnected":
-        if (userConnected) {
-          element.classList.add("d-none");
-        }
-        break;
-      case "connected":
-        if (!userConnected) {
-          element.classList.add("d-none");
-        }
-        break;
-      case "admin":
-        if (!userConnected || role != "admin") {
-          element.classList.add("d-none");
-        }
-        break;
-      case "client":
-        if (!userConnected || role != "client") {
-          element.classList.add("d-none");
-        }
-        break;
-    }
+/** Petite aide pour (dé)montrer des éléments */
+function setVisible(nodeList, on) {
+  nodeList.forEach((el) => {
+    // "" = valeur par défaut du navigateur (respecte Bootstrap)
+    el.style.display = on ? "" : "none";
   });
 }
+
+/** Applique la visibilité selon l’état d’auth et le rôle */
+export async function applyAuthVisibility() {
+  const connected = !!getToken();
+  let admin = false;
+
+  if (connected) {
+    try {
+      admin = await isAdmin();
+    } catch {
+      admin = false;
+    }
+  }
+
+  const user = connected && !admin;
+
+  setVisible(document.querySelectorAll('[data-show="connected"]'), connected);
+  setVisible(
+    document.querySelectorAll('[data-show="disconnected"]'),
+    !connected
+  );
+  setVisible(document.querySelectorAll('[data-show="admin"]'), admin);
+  setVisible(document.querySelectorAll('[data-show="user"]'), user);
+}
+
+/** Déconnexion (bouton présent dans le header) */
+function wireSignout() {
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("#signout-btn");
+    if (!btn) return;
+
+    // 1) purge le token
+    logout();
+
+    // 2) met à jour l’affichage
+    applyAuthVisibility();
+
+    // 3) retourne à l’accueil (SPA)
+    history.pushState({}, "", "/");
+    window.dispatchEvent(new Event("spa:navigated"));
+  });
+}
+
+/** Init global */
+function initGlobalUI() {
+  // Au premier chargement du site
+  document.addEventListener("DOMContentLoaded", applyAuthVisibility);
+
+  // Après chaque navigation SPA (le Router émet cet évènement)
+  window.addEventListener("spa:navigated", applyAuthVisibility);
+
+  wireSignout();
+}
+
+initGlobalUI();

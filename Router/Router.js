@@ -1,8 +1,5 @@
-// Router/Router.js
-// Mini SPA router basé sur History API : charge des fragments HTML dans #main-page
-// Gère les routes protégées (connecté / admin).
-
-import { updateHeaderAuth } from "/js/header-auth.js";
+// Router/Router.js — mini SPA avec guards (auth/admin)
+import { updateHeaderAuth, getToken, getRoles } from "/js/header-auth.js";
 
 const routes = {
   "/": "/pages/home.html",
@@ -17,24 +14,11 @@ const routes = {
   "/404": "/pages/404.html",
 };
 
-// Chemins protégés
 const protectedPaths = new Set(["/account", "/allResa", "/reserver"]);
 const adminOnlyPaths = new Set(["/stats"]);
 
-function getToken() {
-  return localStorage.getItem("api_token") || "";
-}
-function getRoles() {
-  try {
-    return JSON.parse(localStorage.getItem("roles") || "[]");
-  } catch {
-    return [];
-  }
-}
-
 function normalizePath(path) {
   if (!path) return "/";
-  // enlève éventuel trailing slash (sauf racine)
   if (path.length > 1 && path.endsWith("/")) return path.slice(0, -1);
   return path;
 }
@@ -46,10 +30,8 @@ async function loadFragment(url) {
 }
 
 function setActiveNav(path) {
-  const links = document.querySelectorAll("nav a.nav-link");
-  links.forEach((a) => {
-    const href = a.getAttribute("href");
-    if (!href) return;
+  document.querySelectorAll("nav a.nav-link").forEach((a) => {
+    const href = a.getAttribute("href") || "";
     a.classList.toggle("active", normalizePath(href) === path);
   });
 }
@@ -58,20 +40,15 @@ async function render(path) {
   const target = document.getElementById("main-page");
   if (!target) return;
 
-  const fragmentUrl = routes[path] || routes["/404"];
   try {
-    const html = await loadFragment(fragmentUrl);
+    const html = await loadFragment(routes[path] || routes["/404"]);
     target.innerHTML = html;
     window.scrollTo({ top: 0, behavior: "instant" });
-
-    // ré-attacher éventuellement des comportements header
     updateHeaderAuth();
-
-    // Ré-intercepter les liens nouvellement insérés
-    attachLinkInterception();
+    attachLinkInterception(); // pour les nouveaux liens injectés
   } catch (e) {
-    target.innerHTML = `<section class="container py-4"><h1>Oups</h1><p>Impossible de charger la page.</p></section>`;
     console.error(e);
+    target.innerHTML = `<section class="container py-4"><h1>Oups</h1><p>Impossible de charger la page.</p></section>`;
   }
 
   setActiveNav(path);
@@ -80,33 +57,28 @@ async function render(path) {
 export async function navigate(path, { replace = false } = {}) {
   path = normalizePath(path);
 
-  // Guards
   const token = getToken();
   const roles = getRoles();
+  console.debug("[guard]", { path, authed: !!token, roles });
 
   if (protectedPaths.has(path) && !token) {
     path = "/signin";
   } else if (adminOnlyPaths.has(path) && !roles.includes("ROLE_ADMIN")) {
+    console.warn("Admin guard → redirect /", roles);
     path = "/";
   }
 
-  if (replace) {
-    history.replaceState({ path }, "", path);
-  } else {
-    history.pushState({ path }, "", path);
-  }
+  if (replace) history.replaceState({ path }, "", path);
+  else history.pushState({ path }, "", path);
+
   await render(path);
 }
 
 function attachLinkInterception() {
-  // Intercepte tous les <a> internes (href commençant par "/")
   document.querySelectorAll('a[href^="/"]').forEach((a) => {
-    // Evite de doubler les listeners
     if (a.dataset.routerBound === "1") return;
     a.dataset.routerBound = "1";
-
     a.addEventListener("click", (e) => {
-      // ignore si modifieur (cmd/ctrl) ou target=_blank
       if (e.metaKey || e.ctrlKey || a.target === "_blank") return;
       e.preventDefault();
       const href = a.getAttribute("href");
@@ -120,19 +92,13 @@ window.addEventListener("popstate", (ev) => {
   render(path);
 });
 
-// Quand on se déconnecte (émis par header-auth)
 window.addEventListener("app:signedout", () => {
   navigate("/", { replace: true });
 });
 
-// Démarrage
 document.addEventListener("DOMContentLoaded", () => {
   attachLinkInterception();
-  const initialPath = normalizePath(location.pathname);
-  // Si la route n'existe pas, aller 404
-  if (!routes[initialPath]) {
-    navigate("/404", { replace: true });
-  } else {
-    navigate(initialPath, { replace: true });
-  }
+  const initial = normalizePath(location.pathname);
+  if (!routes[initial]) navigate("/404", { replace: true });
+  else navigate(initial, { replace: true });
 });

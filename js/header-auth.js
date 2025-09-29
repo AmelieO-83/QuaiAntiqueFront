@@ -1,18 +1,23 @@
 // js/header-auth.js
-// Affiche/masque les éléments du header selon l'état de connexion et les rôles.
-// Requiert que le login stocke: localStorage.api_token et localStorage.roles (JSON.stringify([...])).
+// Affiche/masque les éléments du header selon connexion & rôles.
+// Requiert localStorage.api_token (string) et localStorage.roles (JSON.stringify([...])).
 
-const qsa = (sel) => Array.from(document.querySelectorAll(sel));
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-function getToken() {
+export function getToken() {
   return localStorage.getItem("api_token") || "";
 }
-function getRoles() {
+
+export function getRoles() {
+  // essaie localStorage puis sessionStorage, tolère plusieurs formats
+  const raw = localStorage.getItem("roles") ?? sessionStorage.getItem("roles");
+  if (!raw) return [];
   try {
-    return JSON.parse(localStorage.getItem("roles") || "[]");
-  } catch {
-    return [];
-  }
+    const v = JSON.parse(raw);
+    if (Array.isArray(v)) return v;
+    if (v && Array.isArray(v.roles)) return v.roles;
+  } catch (_) {}
+  return [];
 }
 
 export function updateHeaderAuth() {
@@ -21,45 +26,36 @@ export function updateHeaderAuth() {
   const isUser = roles.includes("ROLE_USER");
   const isAdmin = roles.includes("ROLE_ADMIN");
 
-  // connected / disconnected
-  qsa('[data-show="connected"]').forEach((el) => {
-    el.style.display = isConnected ? "" : "none";
-  });
-  qsa('[data-show="disconnected"]').forEach((el) => {
-    el.style.display = !isConnected ? "" : "none";
-  });
-
-  // user
-  qsa('[data-show="user"]').forEach((el) => {
-    el.style.display = isConnected && isUser ? "" : "none";
-  });
-
-  // admin
-  qsa('[data-show="admin"]').forEach((el) => {
-    el.style.display = isConnected && isAdmin ? "" : "none";
-  });
+  $$('[data-show="connected"]').forEach(
+    (el) => (el.style.display = isConnected ? "" : "none")
+  );
+  $$('[data-show="disconnected"]').forEach(
+    (el) => (el.style.display = !isConnected ? "" : "none")
+  );
+  $$('[data-show="user"]').forEach(
+    (el) => (el.style.display = isConnected && isUser ? "" : "none")
+  );
+  $$('[data-show="admin"]').forEach(
+    (el) => (el.style.display = isConnected && isAdmin ? "" : "none")
+  );
 }
 
-// Déconnexion (bouton id="signout-btn")
 function attachSignout() {
   const btn = document.getElementById("signout-btn");
   if (!btn) return;
   btn.addEventListener("click", () => {
-    // purge minimale
     localStorage.removeItem("api_token");
     localStorage.removeItem("roles");
     updateHeaderAuth();
-
-    // Déclenche un event que le Router peut écouter pour rediriger
     window.dispatchEvent(new CustomEvent("app:signedout"));
   });
 }
 
-// Init à chaque chargement
+// Init
 document.addEventListener("DOMContentLoaded", () => {
   updateHeaderAuth();
   attachSignout();
 });
 
-// Si d'autres modules modifient les rôles/tokens, ils peuvent émettre cet event.
+// Si d'autres modules modifient auth/roles, ils déclenchent cet event :
 window.addEventListener("app:auth-updated", updateHeaderAuth);

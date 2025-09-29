@@ -1,7 +1,9 @@
 // Router/Router.js
-import { getToken } from "/src/api.js";
+// Mini SPA router basé sur History API : charge des fragments HTML dans #main-page
+// Gère les routes protégées (connecté / admin).
 
-// Routes -> fichiers HTML
+import { updateHeaderAuth } from "/js/header-auth.js";
+
 const routes = {
   "/": "/pages/home.html",
   "/galerie": "/pages/galerie.html",
@@ -11,111 +13,126 @@ const routes = {
   "/account": "/pages/auth/account.html",
   "/signin": "/pages/auth/signin.html",
   "/signup": "/pages/auth/signup.html",
+  "/stats": "/pages/stats.html",
+  "/404": "/pages/404.html",
 };
 
-// Chemins qui nécessitent d’être connecté
+// Chemins protégés
 const protectedPaths = new Set(["/account", "/allResa", "/reserver"]);
+const adminOnlyPaths = new Set(["/stats"]);
 
-function requireAuth(pathname) {
-  if (protectedPaths.has(pathname) && !getToken()) {
-    history.replaceState({}, "", "/signin");
-    loadPage("/signin");
-    return false;
+function getToken() {
+  return localStorage.getItem("api_token") || "";
+}
+function getRoles() {
+  try {
+    return JSON.parse(localStorage.getItem("roles") || "[]");
+  } catch {
+    return [];
   }
-  return true;
 }
 
-function highlightActive(pathname) {
-  document.querySelectorAll("header a.nav-link").forEach((link) => {
-    const active = link.getAttribute("href") === pathname;
-    link.classList.toggle("active", active);
+function normalizePath(path) {
+  if (!path) return "/";
+  // enlève éventuel trailing slash (sauf racine)
+  if (path.length > 1 && path.endsWith("/")) return path.slice(0, -1);
+  return path;
+}
+
+async function loadFragment(url) {
+  const res = await fetch(url, { headers: { Accept: "text/html" } });
+  if (!res.ok) throw new Error(`${res.status} on ${url}`);
+  return res.text();
+}
+
+function setActiveNav(path) {
+  const links = document.querySelectorAll("nav a.nav-link");
+  links.forEach((a) => {
+    const href = a.getAttribute("href");
+    if (!href) return;
+    a.classList.toggle("active", normalizePath(href) === path);
   });
 }
 
-function isInternalLink(a) {
-  return (
-    a.origin === window.location.origin &&
-    !a.target &&
-    !a.hasAttribute("download")
-  );
-}
+async function render(path) {
+  const target = document.getElementById("main-page");
+  if (!target) return;
 
-async function initPage(pathname) {
+  const fragmentUrl = routes[path] || routes["/404"];
   try {
-    switch (pathname) {
-      case "/galerie":
-        await import("/js/galerie.js");
-        break;
-      case "/reserver":
-        await import("/js/reservation.js");
-        break;
-      case "/signin":
-        await import("/js/auth/signin.js");
-        break;
-      case "/signup":
-        await import("/js/auth/signup.js");
-        break;
-      case "/account":
-        await import("/js/auth/account.js");
-        break;
-      case "/carte":
-        await import("/js/carte.js");
-        break;
-      default:
-        // rien
-        break;
-    }
+    const html = await loadFragment(fragmentUrl);
+    target.innerHTML = html;
+    window.scrollTo({ top: 0, behavior: "instant" });
+
+    // ré-attacher éventuellement des comportements header
+    updateHeaderAuth();
+
+    // Ré-intercepter les liens nouvellement insérés
+    attachLinkInterception();
   } catch (e) {
-    console.error("Init page error:", e);
-  }
-}
-
-export async function loadPage(pathname) {
-  const path = routes[pathname] || "/pages/404.html";
-
-  // Auth guard
-  if (!requireAuth(pathname)) return;
-
-  try {
-    const res = await fetch(path);
-    if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
-    const html = await res.text();
-
-    document.getElementById("main-page").innerHTML = html;
-    highlightActive(pathname);
-
-    // Initialiser le JS de la page injectée
-    await initPage(pathname);
-
-    // Signaler que la page est prête : script.js écoutera cet évènement
-    window.dispatchEvent(new Event("spa:navigated"));
-  } catch (e) {
+    target.innerHTML = `<section class="container py-4"><h1>Oups</h1><p>Impossible de charger la page.</p></section>`;
     console.error(e);
-    document.getElementById(
-      "main-page"
-    ).innerHTML = `<div class="container py-5"><div class="alert alert-danger">Erreur de chargement de la page.</div></div>`;
   }
+
+  setActiveNav(path);
 }
 
-function onLinkClick(e) {
-  const a = e.target.closest("a[href]");
-  if (!a || !isInternalLink(a)) return;
+export async function navigate(path, { replace = false } = {}) {
+  path = normalizePath(path);
 
-  const url = new URL(a.href);
-  if (url.pathname === window.location.pathname) {
-    e.preventDefault();
-    return;
+  // Guards
+  const token = getToken();
+  const roles = getRoles();
+
+  if (protectedPaths.has(path) && !token) {
+    path = "/signin";
+  } else if (adminOnlyPaths.has(path) && !roles.includes("ROLE_ADMIN")) {
+    path = "/";
   }
-  e.preventDefault();
-  window.history.pushState({}, "", url.pathname);
-  loadPage(url.pathname);
+
+  if (replace) {
+    history.replaceState({ path }, "", path);
+  } else {
+    history.pushState({ path }, "", path);
+  }
+  await render(path);
 }
 
-function onPopState() {
-  loadPage(window.location.pathname);
+function attachLinkInterception() {
+  // Intercepte tous les <a> internes (href commençant par "/")
+  document.querySelectorAll('a[href^="/"]').forEach((a) => {
+    // Evite de doubler les listeners
+    if (a.dataset.routerBound === "1") return;
+    a.dataset.routerBound = "1";
+
+    a.addEventListener("click", (e) => {
+      // ignore si modifieur (cmd/ctrl) ou target=_blank
+      if (e.metaKey || e.ctrlKey || a.target === "_blank") return;
+      e.preventDefault();
+      const href = a.getAttribute("href");
+      if (href) navigate(href);
+    });
+  });
 }
 
-// init SPA
-window.addEventListener("popstate", onPopState);
-document.addEventListener("click", onLinkClick);
-loadPage(window.location.pathname);
+window.addEventListener("popstate", (ev) => {
+  const path = normalizePath(ev.state?.path || location.pathname);
+  render(path);
+});
+
+// Quand on se déconnecte (émis par header-auth)
+window.addEventListener("app:signedout", () => {
+  navigate("/", { replace: true });
+});
+
+// Démarrage
+document.addEventListener("DOMContentLoaded", () => {
+  attachLinkInterception();
+  const initialPath = normalizePath(location.pathname);
+  // Si la route n'existe pas, aller 404
+  if (!routes[initialPath]) {
+    navigate("/404", { replace: true });
+  } else {
+    navigate(initialPath, { replace: true });
+  }
+});
